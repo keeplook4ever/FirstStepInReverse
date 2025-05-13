@@ -127,6 +127,14 @@
   ```
   avdmanager create avd -n insecurebank_api23_arm64 -k "system-images;android-23;google_apis;arm64-v8a" --device "pixel" --force
   ```
+  
+- 启动模拟器（用`adb devices`列出当前模拟器）
+
+  ```
+  emulator -avd insecurebank_api23_arm64
+  ```
+  
+  
 
 ### 3.2 Install InsecureBankv2.apk in Emulator
 

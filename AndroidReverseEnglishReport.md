@@ -114,6 +114,14 @@
   ```
   avdmanager create avd -n insecurebank_api23_arm64 -k "system-images;android-23;google_apis;arm64-v8a" --device "pixel" --force
   ```
+  
+- Start Emulator (use `adb devices` check weather emulator started)
+
+  ```
+  emulator -avd insecurebank_api23_arm64
+  ```
+  
+  
 
 ### 3.2 Install InsecureBankv2.apk in Emulator
 
