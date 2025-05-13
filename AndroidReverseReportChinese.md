@@ -38,7 +38,13 @@
 
 - `git clone git@github.com:dineshshetty/Android-InsecureBankv2.git`
 
-### 2.3 Sequence of login
+### 2.3 Start Static Analysis
+
+- ```
+  jadx-gui Android-InsecureBankv2-master/InsecureBankv2.apk
+  ```
+
+### 2.4 Sequence of login
 
 <img src="/Users/keeplook4ever/Library/Application Support/typora-user-images/image-20250510150653579.png" alt="image-20250510150653579" style="zoom: 50%;" />
 
@@ -64,7 +70,7 @@
   
   - Fail -> WrongLogin -> login
 
-### 2.4 Login Action
+### 2.5 Login Action
 
  - API: 
    - http://ip:port/login 
@@ -96,7 +102,7 @@
 
     - 使⽤https 加密传输
 
-### 2.5 Change Password Vulnerability
+### 2.6 Change Password Vulnerability
 
 - 没有验证是否本⼈发起的请求，⽐如验证当前⽤户的账号密码 或 ⼿机号⼆次验证账号本⼈所有，直接发起了
 
@@ -407,9 +413,67 @@ cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
 byte[] cipherText = cipher.doFinal(plainText.getBytes());
 ```
 
+### 4.5 获取账号密码密文，解密用户密码
 
+1. 在前面发现登录后直接将账号密码存储到了运行时本地的sharedPreference:
 
-### 4.5. AndroidManifest.xml 配置不当
+   ```
+   import android.content.SharedPreferences;
+   ```
+
+​	<img src="/Users/keeplook4ever/Library/Application Support/typora-user-images/image-20250513172856129.png" alt="image-20250513172856129" style="zoom: 25%;" />
+
+2. 运行以下命令开启shell调试，找到存储的账号密码数据：(前提模拟器打开运行态)
+
+   ```
+   adb shell
+   run-as com.android.insecurebankv2
+   cd shared_prefs
+   cat mySharedPreferences.xml
+   ```
+
+   得到内容如下：
+
+   <img src="/Users/keeplook4ever/Library/Application Support/typora-user-images/image-20250513173148496.png" alt="image-20250513173148496" style="zoom:50%;" />
+
+3. 解密账号密码
+
+   1. EncryptedUsername 已知用base64 `ZGV2YWRtaW4=`，解码如下：`devadmin`
+
+   2. superSecurePassword 使用AES加密`i2soXgauVzM8iD/TBS8cbQ==`，代码如下：
+
+      <img src="/Users/keeplook4ever/Library/Application Support/typora-user-images/image-20250513173447424.png" alt="image-20250513173447424" style="zoom:30%;" />
+
+ 3. 编写解密python代码如下：
+
+    ```python
+    from Crypto.Cipher import AES
+    import base64
+    
+    # 从 APK 中找到的 key 和 IV
+    key = "This is the super secret key 123".encode("utf-8")
+    iv = bytes([0] * 16)
+    
+    # 密文 Base64 解码
+    cipher_b64 = "i2soXgauVzM8iD/TBS8cbQ=="
+    cipher_bytes = base64.b64decode(cipher_b64)
+    
+    # 解密
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    plaintext = cipher.decrypt(cipher_bytes)
+    
+    # 去除填充
+    pad_len = plaintext[-1]
+    plaintext = plaintext[:-pad_len]
+    
+    print("Decrypted password:", plaintext.decode("utf-8"))
+    ```
+
+    运行解密代码解出密码如下：
+
+    <img src="/Users/keeplook4ever/Library/Application Support/typora-user-images/image-20250513173912023.png" alt="image-20250513173912023" style="zoom:50%;" />
+
+### 4.6. AndroidManifest.xml 配置不当
 
 1. `android:debuggable="true"` 调试模式打开，可被任意USB调试工具（adb shell, frida, re-framework) 附加
 

@@ -393,9 +393,65 @@ cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
 byte[] cipherText = cipher.doFinal(plainText.getBytes());
 ```
 
+### 4.5 Get user and password with adb shell and decrypt for plaintext password
 
+1. found username and password are stored at local android data using `sharedPreference`
 
-### 4.5. **Misconfigured AndroidManifest.xml**
+   ```
+   import android.content.SharedPreferences;
+   ```
+
+   <img src="/Users/keeplook4ever/Library/Application Support/typora-user-images/image-20250513172856129.png" alt="image-20250513172856129" style="zoom: 25%;" />
+
+2. Run the following cmd to start shell debugging and locate the stored account and password data: (Make sure the emulator is running beforehand)
+
+   ```
+   adb shell
+   run-as com.android.insecurebankv2
+   cd shared_prefs
+   cat mySharedPreferences.xml
+   ```
+
+   <img src="/Users/keeplook4ever/Library/Application Support/typora-user-images/image-20250513173148496.png" alt="image-20250513173148496" style="zoom:50%;" />
+
+3. Decrypt username and password 
+
+   1. EncryptedUsername value is `ZGV2YWRtaW4=`，known as using base64, so decode as `devadmin`
+
+   2. superSecurePassword value is`i2soXgauVzM8iD/TBS8cbQ==`，known as using AES encrypt, the encrypt code of the app is shown as  following:
+
+      <img src="/Users/keeplook4ever/Library/Application Support/typora-user-images/image-20250513173447424.png" alt="image-20250513173447424" style="zoom:30%;" />
+
+4. Write decryption python codes :
+
+   ```python
+   from Crypto.Cipher import AES
+   import base64
+   
+   # 从 APK 中找到的 key 和 IV
+   key = "This is the super secret key 123".encode("utf-8")
+   iv = bytes([0] * 16)
+   
+   # 密文 Base64 解码
+   cipher_b64 = "i2soXgauVzM8iD/TBS8cbQ=="
+   cipher_bytes = base64.b64decode(cipher_b64)
+   
+   # 解密
+   cipher = AES.new(key, AES.MODE_CBC, iv)
+   plaintext = cipher.decrypt(cipher_bytes)
+   
+   # 去除填充
+   pad_len = plaintext[-1]
+   plaintext = plaintext[:-pad_len]
+   
+   print("Decrypted password:", plaintext.decode("utf-8"))
+   ```
+
+   run and get the plaintext of password:
+
+   <img src="/Users/keeplook4ever/Library/Application Support/typora-user-images/image-20250513174929574.png" alt="image-20250513174929574" style="zoom: 50%;" />
+
+### 4.6. **Misconfigured AndroidManifest.xml**
 
 1. `android:debuggable="true"` opens debug mode, allowing any USB debugging tool (adb shell, frida, re-framework) to attach.
     It should be changed to `android:debuggable="false"` or removed.
